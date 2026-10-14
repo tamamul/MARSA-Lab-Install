@@ -20,7 +20,7 @@ SolidCompression=yes
 WizardStyle=modern
 
 [Files]
-Source: "..\dist\client\*"; DestDir: "{app}"; Excludes: "appsettings.json"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\..\dist\client\*"; DestDir: "{app}"; Excludes: "appsettings.json"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Registry]
 Root: HKLM; Subkey: "SOFTWARE\Microsoft\Windows\CurrentVersion\Run"; ValueType: string; ValueName: "MarsaLabClient"; ValueData: """{app}\MarsaLab.Client.exe"""; Flags: uninsdeletevalue
