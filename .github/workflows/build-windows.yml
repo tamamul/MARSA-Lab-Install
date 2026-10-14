@@ -48,9 +48,9 @@ jobs:
         shell: pwsh
         run: |
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
-          & $iscc "/DAppVersion=1.0.${{ github.run_number }}" installer\guru.iss
+          & $iscc "/DAppVersion=1.0.${{ github.run_number }}" src\installer\guru.iss
           if ($LASTEXITCODE -ne 0) { exit 1 }
-          & $iscc "/DAppVersion=1.0.${{ github.run_number }}" installer\client.iss
+          & $iscc "/DAppVersion=1.0.${{ github.run_number }}" src\installer\client.iss
           if ($LASTEXITCODE -ne 0) { exit 1 }
 
       - name: Simpan hasil build
