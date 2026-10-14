@@ -23,8 +23,8 @@ UninstallDisplayIcon={app}\MarsaLab.Desktop.exe
 Name: "autostart"; Description: "Jalankan server otomatis saat Windows menyala (disarankan, agar client selalu terhubung)"
 
 [Files]
-Source: "..\dist\guru\*"; DestDir: "{app}"; Excludes: "appsettings.json"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "..\dist\webview2\MicrosoftEdgeWebview2Setup.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall; Check: not WebView2Installed
+Source: "..\..\dist\guru\*"; DestDir: "{app}"; Excludes: "appsettings.json"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\..\dist\webview2\MicrosoftEdgeWebview2Setup.exe"; DestDir: "{tmp}"; Flags: deleteafterinstall; Check: not WebView2Installed
 Source: "gen-token.ps1"; Flags: dontcopy
 
 [Icons]
