@@ -58,6 +58,6 @@ jobs:
         with:
           name: MARSA-Lab-Installer
           path: |
-            out/MarsaLab-Guru-Setup.exe
-            out/MarsaLab-Client-Setup.exe
+            src/out/MarsaLab-Guru-Setup.exe
+            src/out/MarsaLab-Client-Setup.exe
           retention-days: 14
