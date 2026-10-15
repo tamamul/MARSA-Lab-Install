@@ -183,16 +183,67 @@ app.MapGet("/api/commands/recent", (HttpContext ctx) =>
 });
 app.MapGet("/api/submissions/zip", (HttpContext ctx) =>
 {
-    if (!TokenIsValid(ctx, token)) return Results.Unauthorized();
-    var files = new DirectoryInfo(submitDir).GetFiles("*", SearchOption.AllDirectories);
-    if (files.Length == 0) return Results.NotFound(new { error = "Belum ada tugas." });
-    var tmp = new FileStream(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N") + ".zip"),
-        FileMode.Create, FileAccess.ReadWrite, FileShare.None, 81920, FileOptions.DeleteOnClose);
-    using (var zip = new System.IO.Compression.ZipArchive(tmp, System.IO.Compression.ZipArchiveMode.Create, leaveOpen: true))
-        foreach (var f in files)
-            zip.CreateEntryFromFile(f.FullName, f.Directory!.Name + "/" + f.Name, System.IO.Compression.CompressionLevel.Fastest);
-    tmp.Position = 0;
-    return Results.File(tmp, "application/zip", $"tugas-{DateTime.Now:yyyyMMdd-HHmm}.zip");
+    if (!TokenIsValid(ctx, token))
+        return Results.Unauthorized();
+
+    var files = new DirectoryInfo(submitDir)
+        .GetFiles("*", SearchOption.AllDirectories);
+
+    if (files.Length == 0)
+        return Results.NotFound(new { error = "Belum ada tugas." });
+
+    var tmp = new FileStream(
+        Path.Combine(
+            Path.GetTempPath(),
+            Guid.NewGuid().ToString("N") + ".zip"
+        ),
+        FileMode.Create,
+        FileAccess.ReadWrite,
+        FileShare.None,
+        81920,
+        FileOptions.DeleteOnClose
+    );
+
+    try
+    {
+        using (var zip = new System.IO.Compression.ZipArchive(
+            tmp,
+            System.IO.Compression.ZipArchiveMode.Create,
+            leaveOpen: true))
+        {
+            foreach (var f in files)
+            {
+                var entryName = Path.Combine(
+                    f.Directory!.Name,
+                    f.Name
+                ).Replace('\\', '/');
+
+                var entry = zip.CreateEntry(
+                    entryName,
+                    System.IO.Compression.CompressionLevel.Fastest
+                );
+
+                using (var entryStream = entry.Open())
+                using (var fileStream = f.OpenRead())
+                {
+                    fileStream.CopyTo(entryStream);
+                }
+            }
+        }
+
+        tmp.Position = 0;
+
+        return Results.File(
+            tmp,
+            "application/zip",
+            $"tugas-{DateTime.Now:yyyyMMdd-HHmm}.zip"
+        );
+    }
+    catch
+    {
+        tmp.Dispose();
+        throw;
+    }
 });
 app.MapGet("/api/health", () => Results.Ok(new { ok = true, app = "MarsaLab.Admin", version = "1.2.0" }));
 app.Lifetime.ApplicationStarted.Register(() =>
