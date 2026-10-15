@@ -13,6 +13,8 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 });
 var port = builder.Configuration.GetValue<int>("Lab:Port", 5080);
 var token = builder.Configuration["Lab:Token"] ?? "GANTI_TOKEN_LAB_INI";
+var clientToken = string.IsNullOrWhiteSpace(builder.Configuration["Lab:ClientToken"]) ? token : builder.Configuration["Lab:ClientToken"]!;
+if (clientToken == token) Console.WriteLine("PERINGATAN: Lab:ClientToken kosong/sama dengan Lab:Token. Isi token client yang berbeda.");
 var offlineAfterSeconds = Math.Clamp(builder.Configuration.GetValue<int>("Lab:OfflineAfterSeconds", 15), 10, 120);
 if (token == "GANTI_TOKEN_LAB_INI" || token.Length < 24)
     Console.WriteLine("PERINGATAN: Ganti Lab:Token dengan token acak minimal 24 karakter sebelum dipakai.");
@@ -49,7 +51,7 @@ app.UseStaticFiles();
 
 app.MapPost("/api/heartbeat", (HttpContext ctx, HeartbeatRequest? request) =>
 {
-    if (!TokenIsValid(ctx, token)) return Results.Unauthorized();
+    if (!TokenIsValid(ctx, clientToken)) return Results.Unauthorized();
     if (request is null || string.IsNullOrWhiteSpace(request.ClientId) || string.IsNullOrWhiteSpace(request.ComputerName)) return Results.BadRequest(new { error = "ClientId dan ComputerName wajib diisi." });
     if (request.ClientId.Length > 100 || request.ComputerName.Length > 100) return Results.BadRequest(new { error = "Identitas maksimal 100 karakter." });
     var id = request.ClientId.Trim(); var name = request.ComputerName.Trim();
@@ -76,12 +78,14 @@ app.MapPost("/api/commands", (HttpContext ctx, CreateCommandRequest? request) =>
 {
     if (!TokenIsValid(ctx, token)) return Results.Unauthorized();
     if (request is null || string.IsNullOrWhiteSpace(request.Type)) return Results.BadRequest(new { error = "Jenis perintah wajib diisi." });
-var allowed = new[] { "announce", "lock", "restart", "shutdown", "cancel-shutdown", "open-share" };
+var allowed = new[] { "announce", "lock", "restart", "shutdown", "cancel-shutdown", "open-share", open-url" };
     var type = request.Type.Trim().ToLowerInvariant();
     if (!allowed.Contains(type)) return Results.BadRequest(new { error = "Perintah tidak dikenal." });
     var message = (request.Message ?? "").Trim();
     if (type == "announce" && string.IsNullOrWhiteSpace(message)) return Results.BadRequest(new { error = "Isi pengumuman wajib diisi." });
     if (message.Length > 300) return Results.BadRequest(new { error = "Pesan maksimal 300 karakter." });
+    if (type == "open-url" && !(Uri.TryCreate(message, UriKind.Absolute, out var openUri) && (openUri.Scheme == Uri.UriSchemeHttp || openUri.Scheme == Uri.UriSchemeHttps)))
+    return Results.BadRequest(new { error = "Alamat harus diawali http:// atau https://" });
     var now = DateTimeOffset.UtcNow;
 var target = string.IsNullOrWhiteSpace(request.TargetClientId) ? "*" : request.TargetClientId.Trim();
 var picked = request.TargetClientIds?.Where(i => !string.IsNullOrWhiteSpace(i)).Select(i => i.Trim()).ToHashSet(StringComparer.OrdinalIgnoreCase);
@@ -157,7 +161,7 @@ app.MapPost("/api/student/submit", async (HttpContext ctx) =>
 
 app.MapGet("/api/commands/next", (HttpContext ctx, string clientId) =>
 {
-    if (!TokenIsValid(ctx, token)) return Results.Unauthorized();
+    if (!TokenIsValid(ctx, clientToken)) return Results.Unauthorized();
     if (string.IsNullOrWhiteSpace(clientId) || clientId.Length > 100) return Results.BadRequest();
     var pending = commands.Values.Where(c => c.ClientId.Equals(clientId, StringComparison.OrdinalIgnoreCase) && c.Status == "Pending").OrderBy(c => c.CreatedUtc).Take(5).ToArray();
     foreach (var c in pending) commands.TryUpdate(c.Id, c with { Status = "Delivered" }, c);
@@ -165,7 +169,7 @@ app.MapGet("/api/commands/next", (HttpContext ctx, string clientId) =>
 });
 app.MapPost("/api/commands/{id}/result", (HttpContext ctx, string id, CommandResultRequest? request) =>
 {
-    if (!TokenIsValid(ctx, token)) return Results.Unauthorized();
+    if (!TokenIsValid(ctx, clientToken)) return Results.Unauthorized();
     if (request is null || string.IsNullOrWhiteSpace(request.ClientId)) return Results.BadRequest();
     if (!commands.TryGetValue(id, out var existing) || !existing.ClientId.Equals(request.ClientId, StringComparison.OrdinalIgnoreCase)) return Results.NotFound();
     var updated = existing with { Status = request.Success ? "Berhasil" : "Gagal", Result = (request.Result ?? "").Trim()[..Math.Min((request.Result ?? "").Trim().Length, 500)] };
@@ -176,6 +180,19 @@ app.MapGet("/api/commands/recent", (HttpContext ctx) =>
 {
     if (!TokenIsValid(ctx, token)) return Results.Unauthorized();
     return Results.Ok(commands.Values.OrderByDescending(c => c.CreatedUtc).Take(30).ToArray());
+});
+app.MapGet("/api/submissions/zip", (HttpContext ctx) =>
+{
+    if (!TokenIsValid(ctx, token)) return Results.Unauthorized();
+    var files = new DirectoryInfo(submitDir).GetFiles("*", SearchOption.AllDirectories);
+    if (files.Length == 0) return Results.NotFound(new { error = "Belum ada tugas." });
+    var tmp = new FileStream(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N") + ".zip"),
+        FileMode.Create, FileAccess.ReadWrite, FileShare.None, 81920, FileOptions.DeleteOnClose);
+    using (var zip = new System.IO.Compression.ZipArchive(tmp, System.IO.Compression.ZipArchiveMode.Create, leaveOpen: true))
+        foreach (var f in files)
+            zip.CreateEntryFromFile(f.FullName, f.Directory!.Name + "/" + f.Name, System.IO.Compression.CompressionLevel.Fastest);
+    tmp.Position = 0;
+    return Results.File(tmp, "application/zip", $"tugas-{DateTime.Now:yyyyMMdd-HHmm}.zip");
 });
 app.MapGet("/api/health", () => Results.Ok(new { ok = true, app = "MarsaLab.Admin", version = "1.2.0" }));
 app.Lifetime.ApplicationStarted.Register(() =>
