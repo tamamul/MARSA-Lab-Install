@@ -58,7 +58,7 @@ end;
 procedure InitializeWizard;
 begin
   ServerPage := CreateInputQueryPage(wpWelcome, 'Koneksi ke server', 'Alamat server MARSA Lab',
-  'Isi sesuai PC guru. Pakai Token client (bukan token admin) dari instalasi Guru.';
+  'Isi sesuai PC guru. Pakai Token client (bukan token admin) dari instalasi Guru.');
   ServerPage.Add('Alamat server:', False);
   ServerPage.Add('Token client:', False);
   ServerPage.Values[0] := ExpandConstant('{param:SERVER|http://192.168.0.10:5080}');
