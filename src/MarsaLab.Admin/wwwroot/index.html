@@ -1,64 +1,206 @@
 <!doctype html>
-<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>MARSA Lab ยท Kontrol Komputer</title>
+<html lang="id" data-theme="dark"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MARSA Lab</title>
 <style>
-:root{color-scheme:dark;--bg:#0b141a;--panel:#13232b;--line:#29424c;--cyan:#00c2d1;--muted:#9bb1ba;--green:#4cdaa1;--red:#ff7777;--amber:#ffd166}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#eef8fa;font:15px Segoe UI,Arial,sans-serif}.wrap{max-width:1180px;margin:auto;padding:24px 16px}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}.brand{font-size:25px;font-weight:800}.brand span{color:var(--cyan)}.sub,.muted{color:var(--muted)}.pill{border:1px solid var(--line);border-radius:999px;padding:8px 12px;color:var(--muted)}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:22px 0}.stat,.panel{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:17px}.label{font-size:13px;color:var(--muted)}.num{font-size:30px;font-weight:800;margin-top:7px}.grid{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(300px,.9fr);gap:14px}.toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}input,select,textarea{width:100%;background:#0b171d;border:1px solid var(--line);border-radius:9px;padding:10px 11px;color:#fff;font:inherit}textarea{resize:vertical;min-height:76px}button{background:var(--cyan);color:#00272b;border:0;border-radius:9px;padding:10px 13px;font-weight:750;cursor:pointer}button:disabled{opacity:.4;cursor:not-allowed}.secondary{background:#263d47;color:#eef8fa}.danger{background:#b93d4a;color:#fff}.warn{background:#e7ae38;color:#2b2100}.actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}.field{display:grid;gap:6px;margin:12px 0}.tablewrap{overflow:auto}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:12px 9px;border-bottom:1px solid var(--line);white-space:nowrap}th{font-size:11px;color:var(--muted);text-transform:uppercase}tr:last-child td{border:0}.status{font-weight:750}.online{color:var(--green)}.offline{color:var(--red)}.empty{text-align:center;color:var(--muted);padding:25px}.foot{font-size:12px;color:var(--muted);margin-top:15px;line-height:1.6}.section-title{font-size:17px;font-weight:750;margin-bottom:5px}.notice{background:#282619;border:1px solid #63552a;color:#ffe5a3;border-radius:10px;padding:11px 12px;font-size:13px;line-height:1.5;margin:12px 0}.toast{position:fixed;right:16px;bottom:16px;max-width:380px;background:#203b44;border:1px solid var(--line);padding:14px;border-radius:10px;display:none;z-index:2}.tiny{font-size:12px}.status-chip{border:1px solid var(--line);border-radius:999px;padding:4px 8px;font-size:12px}@media(max-width:780px){.grid{grid-template-columns:1fr}.stats{gap:7px}.stat{padding:12px}.num{font-size:25px}.hide-mobile{display:none}}@media(max-width:420px){.stats{grid-template-columns:1fr}.actions{grid-template-columns:1fr}}
-</style></head><body><main class="wrap">
-<header class="top"><div><div class="brand"><span>MARSA</span> Lab</div><div class="sub">Kontrol komputer laboratorium ยท PC meja guru</div></div><div class="pill" id="connection">Menghubungkan...</div></header>
-<div class="notice"><b>Mode admin.</b> Perintah hanya tersedia untuk komputer yang terhubung. Restart/shutdown memberi peringatan Windows dan jeda 60 detik. Client harus dijalankan pada sesi pengguna untuk menampilkan pesan dan mengunci layar.</div>
-<section class="stats"><div class="stat"><div class="label">Total komputer</div><div class="num" id="total">0</div></div><div class="stat"><div class="label">Online</div><div class="num online" id="online">0</div></div><div class="stat"><div class="label">Offline</div><div class="num offline" id="offline">0</div></div></section>
-<div class="grid"><section class="panel"><div class="toolbar"><div><div class="section-title">Komputer lab</div><div class="sub tiny">Status diperbarui otomatis setiap 3 detik</div></div><button class="secondary" onclick="loadClients()">Muat ulang</button></div><div class="toolbar"><input id="filter" placeholder="Cari nama komputer atau IP..."></div><div class="tablewrap"><table> <thead><tr><th><input type="checkbox" onclick="toggleAll(this.checked)"></th><th>Komputer</th><th>IP</th> <th>Status</th><th class="hide-mobile">Terakhir terlihat</th></tr></thead><tbody id="rows"><tr><td colspan="4" class="empty">Menunggu client terhubung...</td></tr></tbody></table></div></section>
-<section class="panel"><div class="section-title">Kirim kontrol</div><div class="sub tiny">Pilih satu komputer atau semua komputer online.</div><div class="field"><label for="target">Target komputer</label><select id="target"><option value="*">Semua komputer online</option></select></div><div class="field"><label for="message">Pesan / alasan (untuk pengumuman dan restart/shutdown)</label><textarea id="message" maxlength="300" placeholder="Contoh: Praktik selesai, simpan pekerjaan kalian."></textarea></div><div class="actions"><button onclick="sendCommand('announce')">Tampilkan pengumuman</button><button class="secondary" onclick="sendCommand('lock')">Kunci layar</button><button class="warn" onclick="sendCommand('restart')">Restart ยท 60 dtk</button><button class="danger" onclick="sendCommand('shutdown')">Matikan ยท 60 dtk</button>
-	
-<button class="secondary" onclick="sendCommand('open-share')" style="grid-column:1/-1">Buka halaman tugas di PC siswa</button>
-	<button class="secondary" onclick="sendCommand('open-url')" style="grid-column:1/-1">Buka website (alamat di kotak pesan)</button>
-	<button class="secondary" onclick="saveGroup()">Simpan centang jadi kelompok</button><button class="secondary" onclick="deleteGroup()">Hapus kelompok</button><button class="secondary" onclick="location.href='berkas.html'" style="grid-column:1/-1">Kelola berkas &amp; tugas siswa ?</button>
-	
-</div>
-	
-<div class="foot">Catatan: kunci layar tidak dapat dibatalkan dari dashboard. Pengguna harus membuka kunci secara normal di PC masing-masing. Perintah daya dapat gagal jika akun client tidak memiliki hak Windows yang diperlukan.</div></section></div>
-<section class="panel" style="margin-top:14px"><div class="toolbar"><div><div class="section-title">Riwayat perintah</div><div class="sub tiny">30 perintah terakhir yang masih tercatat selama server berjalan.</div></div><button class="secondary" onclick="loadRecent()">Perbarui</button></div><div class="tablewrap"><table><thead><tr><th>Waktu</th><th>Komputer</th><th>Perintah</th><th>Status</th><th>Hasil</th></tr></thead><tbody id="history"><tr><td colspan="5" class="empty">Belum ada perintah.</td></tr></tbody></table></div></section>
-<div class="foot">MARSA Lab Tahap 1 ยท Jaringan lokal. Ganti token pada appsettings.json server/client dan konstanta TOKEN di halaman ini sebelum digunakan. Gunakan hanya pada komputer lab yang dikelola sekolah.</div></main><div class="toast" id="toast"></div>
+:root{--bg:#0b141a;--panel:#13232b;--panel2:#1a2f39;--line:#29424c;--text:#eef8fa;--muted:#9bb1ba;--cyan:#00c2d1;--onc:#00272b;--on:#2ecc71;--off:#7c8b92;--red:#e5484d;--amber:#f5a524}
+[data-theme=light]{--bg:#eef3f5;--panel:#fff;--panel2:#f3f7f8;--line:#d5e0e4;--text:#10242b;--muted:#5d747d;--cyan:#008a96;--onc:#fff;--off:#9aa9af}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.4 "Segoe UI",system-ui,sans-serif}
+.wrap{max-width:1250px;margin:auto;padding:16px 14px 80px}
+.top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}.sp{flex:1}
+.brand{font-size:22px;font-weight:800}.brand b{color:var(--cyan)}
+.pill{display:inline-flex;align-items:center;gap:7px;background:var(--panel);border:1px solid var(--line);border-radius:99px;padding:6px 12px;font-size:13px}
+.pill i{width:9px;height:9px;border-radius:50%;background:var(--red)}.pill.ok i{background:var(--on)}
+.btn{background:var(--cyan);color:var(--onc);border:0;border-radius:10px;padding:10px 14px;font:inherit;font-weight:700;cursor:pointer;text-decoration:none;display:inline-block;text-align:center}
+.btn.sec{background:var(--panel2);color:var(--text);border:1px solid var(--line)}.btn.danger{background:var(--red);color:#fff}
+.btn:active{transform:scale(.98)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.stat .n{font-size:28px;font-weight:800}.stat .l{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.stat.on .n{color:var(--on)}
+.main{display:grid;grid-template-columns:1fr 340px;gap:14px;align-items:start}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px}
+.side{position:sticky;top:12px}
+h2{font-size:16px;margin:0 0 10px}h3{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:14px 0 8px}
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+input[type=text],textarea{width:100%;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px;color:var(--text);font:inherit}
+textarea{min-height:76px;resize:vertical}#filter{flex:1;min-width:160px;width:auto}
+.chip{border:1px solid var(--line);background:var(--panel2);color:var(--text);border-radius:99px;padding:6px 12px;cursor:pointer;font:inherit;font-size:13px}
+.chip.act{background:var(--cyan);color:var(--onc);border-color:var(--cyan)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.pc{position:relative;background:var(--panel2);border:2px solid var(--line);border-radius:12px;padding:12px;cursor:pointer;user-select:none}
+.pc.sel{border-color:var(--cyan);box-shadow:0 0 0 3px color-mix(in srgb,var(--cyan) 25%,transparent)}
+.pc.off{opacity:.55;cursor:not-allowed}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--off);display:inline-block}.pc.on .dot{background:var(--on)}
+.ck{position:absolute;top:8px;right:8px;width:20px;height:20px;border-radius:6px;border:2px solid var(--line);display:grid;place-items:center;font-size:13px;font-weight:800}
+.pc.sel .ck{background:var(--cyan);border-color:var(--cyan);color:var(--onc)}
+.nm{font-weight:700;margin:6px 0 2px;word-break:break-all}.ip,.ago,.muted{color:var(--muted);font-size:12px}
+.empty{color:var(--muted);padding:18px;text-align:center;grid-column:1/-1}
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:8px}.acts .full{grid-column:1/-1}
+.tpl{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.tw{overflow:auto}table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:8px 6px;border-bottom:1px solid var(--line);font-size:13px}th{color:var(--muted);font-size:11px;text-transform:uppercase}
+.badge{border-radius:99px;padding:2px 9px;font-size:12px;font-weight:700;background:color-mix(in srgb,var(--amber) 25%,transparent);color:var(--amber)}
+.badge.g{background:color-mix(in srgb,var(--on) 25%,transparent);color:var(--on)}.badge.r{background:color-mix(in srgb,var(--red) 25%,transparent);color:var(--red)}
+.bar{display:none;position:fixed;left:0;right:0;bottom:0;z-index:5;background:var(--panel);border-top:1px solid var(--line);padding:10px 14px;align-items:center;gap:10px}
+.toast{position:fixed;left:50%;bottom:70px;transform:translateX(-50%);background:var(--panel);border:1px solid var(--cyan);border-radius:10px;padding:10px 16px;display:none;z-index:9;max-width:92vw}
+dialog{background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:14px;padding:18px;max-width:380px}
+dialog::backdrop{background:#0009}.dact{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.foot{color:var(--muted);font-size:12px;text-align:center;margin-top:10px}
+@media(max-width:900px){.main{grid-template-columns:1fr}.side{position:static}.bar{display:flex}}
+</style></head><body>
+<main class="wrap">
+<div class="top"><div class="brand"><b>MARSA</b> Lab</div><div class="sp"></div>
+<span class="pill" id="conn"><i></i><span id="connTxt">Menghubungkan...</span></span>
+<a class="btn sec" href="berkas.html">Berkas &amp; Tugas</a>
+<button class="btn sec" id="themeBtn" onclick="toggleTheme()">Tema</button></div>
+
+<div class="stats"><div class="stat"><div class="n" id="total">0</div><div class="l">Total</div></div>
+<div class="stat on"><div class="n" id="online">0</div><div class="l">Online</div></div>
+<div class="stat"><div class="n" id="offline">0</div><div class="l">Offline</div></div></div>
+
+<div class="main">
+<section class="panel"><h2>Komputer lab</h2>
+<div class="tools"><input type="text" id="filter" placeholder="Cari nama atau IP..." oninput="render()">
+<button class="chip act" data-f="all" onclick="setFilter('all')">Semua</button>
+<button class="chip" data-f="online" onclick="setFilter('online')">Online</button>
+<button class="chip" data-f="offline" onclick="setFilter('offline')">Offline</button></div>
+<div class="tools"><button class="btn sec" onclick="selectOnline()">Pilih semua online</button>
+<button class="btn sec" onclick="clearSel()">Kosongkan</button>
+<button class="btn sec" onclick="saveGroup()">+ Simpan kelompok</button></div>
+<div class="tools" id="groups"></div>
+<div class="grid" id="grid"></div></section>
+
+<aside class="panel side" id="control"><h2>Kontrol</h2>
+<div class="muted">Target: <b id="selinfo">Semua komputer online</b></div>
+<h3>Pesan / alamat website / alasan</h3>
+<textarea id="message" maxlength="300" placeholder="Isi untuk pengumuman, buka website (https://...), atau alasan restart/matikan"></textarea>
+<div class="tpl" id="tpl"></div>
+<h3>Komunikasi &amp; layar</h3>
+<div class="acts"><button class="btn full" onclick="send('announce')">Kirim pengumuman</button>
+<button class="btn sec" onclick="send('lock')">Kunci layar</button>
+<button class="btn sec" onclick="send('open-url')">Buka website</button>
+<button class="btn sec full" onclick="send('open-share')">Buka halaman tugas di PC siswa</button></div>
+<h3>Daya</h3>
+<div class="acts"><button class="btn danger" onclick="send('restart')">Restart</button>
+<button class="btn danger" onclick="send('shutdown')">Matikan</button>
+<button class="btn sec full" onclick="send('cancel-shutdown')">Batalkan restart/matikan</button></div>
+</aside></div>
+
+<section class="panel"><h2>Riwayat perintah</h2>
+<div class="tw"><table><thead><tr><th>Waktu</th><th>Komputer</th><th>Perintah</th><th>Status</th><th>Hasil</th></tr></thead><tbody id="history"></tbody></table></div></section>
+<div class="foot">MARSA Lab · Jaringan lokal. Gunakan hanya pada komputer lab yang dikelola sekolah.</div>
+</main>
+
+<div class="bar"><div id="selbar" style="flex:1"></div><button class="btn" onclick="document.getElementById('control').scrollIntoView({behavior:'smooth'})">Kontrol ↓</button></div>
+<div class="toast" id="toast"></div>
+<dialog id="dlg"><form method="dialog"><div id="dlgText"></div>
+<div class="dact"><button class="btn sec" value="no">Batal</button><button class="btn" value="yes">Ya, kirim</button></div></form></dialog>
+
 <script>
-// Harus sama persis dengan Lab:Token pada appsettings.json server dan Token pada client.
+const $=id=>document.getElementById(id);
+function h(tag,cls,text){const e=document.createElement(tag);if(cls)e.className=cls;if(text!=null)e.textContent=text;return e}
 let TOKEN=localStorage.getItem('marsaToken')||'';
 document.body.style.visibility='hidden';
 const headers={'X-Marsa-Token':TOKEN,'Content-Type':'application/json'};
+let clients=[],byId={},filterSt='all';const sel=new Set();
+
+/* ---- tema ---- */
+function setTheme(t){document.documentElement.dataset.theme=t;localStorage.setItem('marsaTheme',t);$('themeBtn').textContent=t==='dark'?'☀ Terang':'🌙 Gelap'}
+function toggleTheme(){setTheme(document.documentElement.dataset.theme==='dark'?'light':'dark')}
+setTheme(localStorage.getItem('marsaTheme')||(matchMedia('(prefers-color-scheme: light)').matches?'light':'dark'));
+
+/* ---- util ---- */
+const fmt=d=>new Date(d).toLocaleString('id-ID',{hour12:false,day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+const ago=d=>{const s=Math.max(0,(Date.now()-new Date(d))/1000);return s<60?Math.round(s)+' dtk lalu':s<3600?Math.round(s/60)+' mnt lalu':s<86400?Math.round(s/3600)+' jam lalu':Math.round(s/86400)+' hari lalu'};
+const LABELS={'announce':'Pengumuman','lock':'Kunci layar','restart':'Restart','shutdown':'Matikan','cancel-shutdown':'Batalkan daya','open-share':'Buka halaman tugas','open-url':'Buka website'};
+const label=t=>LABELS[t]||t;
+function toast(msg){const el=$('toast');el.textContent=msg;el.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>el.style.display='none',5000)}
+function ask(text){return new Promise(r=>{$('dlgText').textContent=text;const d=$('dlg');d.returnValue='';d.onclose=()=>r(d.returnValue==='yes');d.showModal()})}
+async function api(url,opts={}){const r=await fetch(url,{...opts,headers:{...headers,...opts.headers}});let body={};try{body=await r.json()}catch{}
+ if(r.status===401)localStorage.removeItem('marsaToken');if(!r.ok)throw Error(body.error||('HTTP '+r.status));return body}
+
+/* ---- gerbang token ---- */
 async function gate(){
-  for(;;){
-    if(!TOKEN){
-      TOKEN=(prompt('Masukkan token lab:')||'').trim();
-      if(!TOKEN){document.body.innerHTML='<p style="padding:30px">Token diperlukan. Tekan F5 untuk mengulang.</p>';document.body.style.visibility='visible';return false}
-    }
-    try{
-      const r=await fetch('/api/summary',{headers:{'X-Marsa-Token':TOKEN}});
-      if(r.ok){localStorage.setItem('marsaToken',TOKEN);headers['X-Marsa-Token']=TOKEN;document.body.style.visibility='visible';return true}
-      if(r.status===401){alert('Token salah, coba lagi.');TOKEN='';localStorage.removeItem('marsaToken');continue}
-    }catch{}
-    await new Promise(s=>setTimeout(s,1000));
-  }
+ for(;;){
+  if(!TOKEN){TOKEN=(prompt('Masukkan token admin lab:')||'').trim();
+   if(!TOKEN){document.body.innerHTML='<p style="padding:30px">Token diperlukan. Tekan F5 untuk mengulang.</p>';document.body.style.visibility='visible';return false}}
+  try{const r=await fetch('/api/summary',{headers:{'X-Marsa-Token':TOKEN}});
+   if(r.ok){localStorage.setItem('marsaToken',TOKEN);headers['X-Marsa-Token']=TOKEN;document.body.style.visibility='visible';return true}
+   if(r.status===401){alert('Token salah, coba lagi.');TOKEN='';localStorage.removeItem('marsaToken');continue}
+  }catch{}
+  await new Promise(s=>setTimeout(s,1000));
+ }
 }
-const checked=new Set();
+
+/* ---- kelompok (tersimpan di browser ini) ---- */
 const getGroups=()=>{try{return JSON.parse(localStorage.getItem('marsaGroups')||'{}')}catch{return{}}};
-function addGroupOptions(sel){const o=document.createElement('option');o.value='#checked';o.textContent='Yang dicentang ('+checked.size+')';sel.append(o);for(const n of Object.keys(getGroups())){const g=document.createElement('option');g.value='group:'+n;g.textContent='Kelompok: '+n;sel.append(g)}}
-function updateTargetLabel(){const o=[...document.getElementById('target').options].find(x=>x.value==='#checked');if(o)o.textContent='Yang dicentang ('+checked.size+')'}
-function toggleAll(on){document.querySelectorAll('#rows input[type=checkbox]:not(:disabled)').forEach(ck=>{ck.checked=on;on?checked.add(ck.value):checked.delete(ck.value)});updateTargetLabel()}
-function saveGroup(){if(!checked.size){toast('Centang komputer dulu.');return}const n=(prompt('Nama kelompok (contoh: Baris A):')||'').trim();if(!n)return;const g=getGroups();g[n]=[...checked];localStorage.setItem('marsaGroups',JSON.stringify(g));toast('Kelompok "'+n+'" disimpan.');loadClients()}
-function deleteGroup(){const t=document.getElementById('target').value;if(!t.startsWith('group:')){toast('Pilih kelompok di target dulu.');return}const n=t.slice(6);if(!confirm('Hapus kelompok '+n+'?'))return;const g=getGroups();delete g[n];localStorage.setItem('marsaGroups',JSON.stringify(g));loadClients()}
-function resolveTargets(){const t=document.getElementById('target').value;if(t==='#checked')return[...checked];if(t.startsWith('group:'))return getGroups()[t.slice(6)]||[];return null}
-const fmt=d=>new Date(d).toLocaleString('id-ID',{hour12:false});
-const label=t=>({'announce':'Pengumuman','lock':'Kunci layar','restart':'Restart','shutdown':'Matikan','cancel-shutdown':'Batalkan daya','open-share':'Buka halaman tugas','open-url':'Buka website'}[t]||t);
-async function api(url,opts={}){const r=await fetch(url,{...opts,headers:{...headers,...opts.headers}});let body={};try{body=await r.json()}catch{}if(r.status===401)localStorage.removeItem('marsaToken');if(!r.ok)throw Error(body.error||('HTTP '+r.status));return body}
-function toast(msg){const el=document.getElementById('toast');el.textContent=msg;el.style.display='block';setTimeout(()=>el.style.display='none',5000)}
-async function loadClients(){try{const data=await api('/api/clients');document.getElementById('connection').textContent='Server terhubung';document.getElementById('total').textContent=data.length;document.getElementById('online').textContent=data.filter(x=>x.status==='Online').length;document.getElementById('offline').textContent=data.filter(x=>x.status==='Offline').length;const q=document.getElementById('filter').value.toLowerCase();const old=document.getElementById('target').value;const target=document.getElementById('target');target.replaceChildren();const all=document.createElement('option');all.value='*';all.textContent='Semua komputer online';target.append(all);addGroupOptions(target);for(const c of data.filter(x=>x.status==='Online')){const o=document.createElement('option');o.value=c.clientId;o.textContent=c.computerName+' ยท '+c.ipAddress;target.append(o)}if([...target.options].some(o=>o.value===old))target.value=old;const rows=document.getElementById('rows');rows.replaceChildren();const filtered=data.filter(c=>(c.computerName+' '+c.ipAddress).toLowerCase().includes(q));if(!filtered.length){rows.innerHTML='<tr><td colspan="4" class="empty">'+(data.length?'Tidak ada hasil.':'Belum ada client terhubung.')+'</td></tr>';return}for(const c of filtered){
-const tr=document.createElement('tr');const cb=document.createElement('td');const ck=document.createElement('input');ck.type='checkbox';ck.value=c.clientId;ck.disabled=c.status!=='Online';ck.checked=checked.has(c.clientId)&&!ck.disabled;ck.onchange=()=>{ck.checked?checked.add(c.clientId):checked.delete(c.clientId);updateTargetLabel()};cb.append(ck);tr.append(cb);for(const v of [c.computerName,c.ipAddress])
-{
-const td=document.createElement('td');td.textContent=v;tr.append(td)}const st=document.createElement('td');st.className='status '+(c.status==='Online'?'online':'offline');st.textContent=c.status;tr.append(st);const last=document.createElement('td');last.className='hide-mobile';last.textContent=fmt(c.lastSeenUtc);tr.append(last);rows.append(tr)}}catch(e){document.getElementById('connection').textContent='Server tidak terhubung';}}
-async function sendCommand(type){const target=document.getElementById('target').value;const message=document.getElementById('message').value.trim();if(['announce','restart','shutdown'].includes(type)&&!message&&type!=='announce'&&!confirm('Alasan kosong. Lanjutkan dengan alasan default?'))return;if(type==='announce'&&!message){toast('Isi pesan pengumuman dahulu.');return}
-								 if(type==='open-url'&&!/^https?:\/\//i.test(message)){toast('Isi alamat website (http/https) di kotak pesan.');return}
-const prompts={'announce':'Tampilkan pengumuman pada target terpilih?','lock':'Kunci layar target terpilih?','restart':'Jadwalkan restart 60 detik pada target terpilih?','shutdown':'Jadwalkan shutdown 60 detik pada target terpilih?','cancel-shutdown':'Coba batalkan shutdown/restart terjadwal pada target terpilih?','open-share':'Buka halaman tugas di browser target?','open-url':'Buka website ini di komputer target?'};
-if(!confirm(prompts[type]))return;
-const ids=resolveTargets();if(ids&&!ids.length){toast('Belum ada komputer dicentang / kelompok kosong.');return}try{const result=await api('/api/commands',{method:'POST',body:JSON.stringify({type,targetClientId:ids?'':target,targetClientIds:ids,message})});
-toast(`Perintah ${label(type)} dikirim ke antrean untuk ${result.queued} komputer.`);await loadRecent()}catch(e){toast('Gagal: '+e.message)}}
-async function loadRecent(){try{const data=await api('/api/commands/recent');const rows=document.getElementById('history');rows.replaceChildren();if(!data.length){rows.innerHTML='<tr><td colspan="5" class="empty">Belum ada perintah.</td></tr>';return}for(const c of data){const tr=document.createElement('tr');for(const v of [fmt(c.createdUtc),c.clientId,label(c.type),c.status,c.result||c.message||'โ€”']){const td=document.createElement('td');td.textContent=v;tr.append(td)}rows.append(tr)}}catch(e){}}
-gate().then(ok=>{if(!ok)return;document.getElementById('filter').addEventListener('input',loadClients);loadClients();loadRecent();setInterval(loadClients,3000);setInterval(loadRecent,5000)});</script></body></html>
+const setGroups=g=>localStorage.setItem('marsaGroups',JSON.stringify(g));
+function saveGroup(){
+ if(!sel.size){toast('Klik komputer dulu untuk dipilih.');return}
+ const n=(prompt('Nama kelompok (contoh: Baris A):')||'').trim();if(!n)return;
+ const g=getGroups();g[n]=[...sel];setGroups(g);toast('Kelompok "'+n+'" disimpan.');renderGroups()}
+function renderGroups(){
+ const box=$('groups');box.replaceChildren();const gs=getGroups();
+ if(!Object.keys(gs).length){box.append(h('span','muted','Belum ada kelompok. Pilih beberapa komputer lalu "+ Simpan kelompok".'));return}
+ for(const n of Object.keys(gs)){
+  const b=h('button','chip',n+' ('+gs[n].length+')');
+  b.onclick=()=>{sel.clear();gs[n].forEach(id=>{if(byId[id]&&byId[id].status==='Online')sel.add(id)});render()};
+  const x=h('span',null,' ×');x.style.opacity='.6';
+  x.onclick=async e=>{e.stopPropagation();if(await ask('Hapus kelompok "'+n+'"?')){const g2=getGroups();delete g2[n];setGroups(g2);renderGroups()}};
+  b.append(x);box.append(b)}}
+
+/* ---- tampilan ---- */
+function setFilter(f){filterSt=f;document.querySelectorAll('[data-f]').forEach(b=>b.classList.toggle('act',b.dataset.f===f));render()}
+function selectOnline(){sel.clear();clients.filter(c=>c.status==='Online').forEach(c=>sel.add(c.clientId));render()}
+function clearSel(){sel.clear();render()}
+function render(){
+ const on=clients.filter(c=>c.status==='Online').length;
+ $('total').textContent=clients.length;$('online').textContent=on;$('offline').textContent=clients.length-on;
+ for(const id of [...sel])if(!byId[id])sel.delete(id);
+ const q=$('filter').value.toLowerCase();
+ const list=clients.filter(c=>(filterSt==='all'||c.status.toLowerCase()===filterSt)&&(c.computerName+' '+c.ipAddress).toLowerCase().includes(q));
+ const g=$('grid');g.replaceChildren();
+ if(!list.length)g.append(h('div','empty',clients.length?'Tidak ada hasil.':'Belum ada client terhubung.'));
+ for(const c of list){
+  const isOn=c.status==='Online',s=sel.has(c.clientId);
+  const card=h('div','pc '+(isOn?'on':'off')+(s?' sel':''));
+  card.append(h('div','ck',s?'✓':''),h('span','dot'),h('div','nm',c.computerName),h('div','ip',c.ipAddress),h('div','ago',isOn?'Online':'Terakhir '+ago(c.lastSeenUtc)));
+  card.onclick=()=>{if(!isOn)return;s?sel.delete(c.clientId):sel.add(c.clientId);render()};
+  g.append(card)}
+ const txt=sel.size?sel.size+' komputer dipilih':'Semua komputer online ('+on+')';
+ $('selinfo').textContent=txt;$('selbar').textContent='Target: '+txt}
+
+/* ---- kirim perintah ---- */
+async function send(type){
+ const message=$('message').value.trim();
+ if(type==='announce'&&!message){toast('Isi pesan pengumuman dahulu.');return}
+ if(type==='open-url'&&!/^https?:\/\//i.test(message)){toast('Isi alamat website (http/https) di kotak pesan.');return}
+ const ids=[...sel].filter(id=>byId[id]&&byId[id].status==='Online');
+ if(sel.size&&!ids.length){toast('Komputer yang dipilih sedang offline.');return}
+ const online=clients.filter(c=>c.status==='Online').length;
+ const scope=ids.length?ids.length+' komputer terpilih':'SEMUA komputer online ('+online+')';
+ if(!await ask(label(type)+' → '+scope+'?'))return;
+ try{const r=await api('/api/commands',{method:'POST',body:JSON.stringify({type,targetClientId:'*',targetClientIds:ids.length?ids:null,message})});
+  toast('Perintah '+label(type)+' masuk antrean untuk '+r.queued+' komputer.');await loadRecent()}
+ catch(e){toast('Gagal: '+e.message)}}
+
+/* ---- data ---- */
+function conn(ok){$('conn').classList.toggle('ok',ok);$('connTxt').textContent=ok?'Server terhubung':'Server tidak terhubung'}
+async function loadClients(){try{clients=await api('/api/clients');byId=Object.fromEntries(clients.map(c=>[c.clientId,c]));conn(true);render()}catch{conn(false)}}
+async function loadRecent(){
+ try{const data=await api('/api/commands/recent');const rows=$('history');rows.replaceChildren();
+  if(!data.length){const tr=h('tr'),td=h('td','empty','Belum ada perintah.');td.colSpan=5;tr.append(td);rows.append(tr);return}
+  for(const c of data){
+   const tr=h('tr');const nm=byId[c.clientId]?byId[c.clientId].computerName:c.clientId;
+   for(const v of [fmt(c.createdUtc),nm,label(c.type)]){tr.append(h('td',null,v))}
+   const st=h('td'),cls=/succ|done|ok|selesai/i.test(c.status)?'g':/fail|gagal|error/i.test(c.status)?'r':'';
+   st.append(h('span','badge '+cls,c.status));tr.append(st,h('td',null,c.result||c.message||'—'));rows.append(tr)}
+ }catch{}}
+
+/* ---- templat pesan ---- */
+for(const t of ['Kumpulkan tugas 5 menit lagi.','Harap tenang dan kerjakan sendiri.','Pelajaran selesai, simpan pekerjaan Anda.']){
+ const b=h('button','chip',t);b.onclick=()=>{$('message').value=t};$('tpl').append(b)}
+
+renderGroups();
+gate().then(ok=>{if(!ok)return;loadClients();loadRecent();setInterval(loadClients,3000);setInterval(loadRecent,5000)});
+</script></body></html>
