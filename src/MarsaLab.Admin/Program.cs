@@ -78,7 +78,7 @@ app.MapPost("/api/commands", (HttpContext ctx, CreateCommandRequest? request) =>
 {
     if (!TokenIsValid(ctx, token)) return Results.Unauthorized();
     if (request is null || string.IsNullOrWhiteSpace(request.Type)) return Results.BadRequest(new { error = "Jenis perintah wajib diisi." });
-var allowed = new[] { "announce", "lock", "restart", "shutdown", "cancel-shutdown", "open-share", open-url" };
+var allowed = new[] { "announce", "lock", "restart", "shutdown", "cancel-shutdown", "open-share", "open-url" };
     var type = request.Type.Trim().ToLowerInvariant();
     if (!allowed.Contains(type)) return Results.BadRequest(new { error = "Perintah tidak dikenal." });
     var message = (request.Message ?? "").Trim();
