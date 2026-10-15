@@ -49,6 +49,9 @@ catch (Exception ex) { Console.WriteLine($"Peringatan: data komputer gagal dibac
 app.UseDefaultFiles();
 app.UseStaticFiles();
 
+var screens = new System.Collections.Concurrent.ConcurrentDictionary<string, ScreenFrame>();
+var watching = new System.Collections.Concurrent.ConcurrentDictionary<string, WatchRequest>();
+
 app.MapPost("/api/heartbeat", (HttpContext ctx, HeartbeatRequest? request) =>
 {
     if (!TokenIsValid(ctx, clientToken)) return Results.Unauthorized();
@@ -57,7 +60,8 @@ app.MapPost("/api/heartbeat", (HttpContext ctx, HeartbeatRequest? request) =>
     var id = request.ClientId.Trim(); var name = request.ComputerName.Trim();
     var ip = ctx.Connection.RemoteIpAddress?.MapToIPv4().ToString() ?? "unknown"; var now = DateTimeOffset.UtcNow;
     clients[id] = new ClientStatus(id, name, ip, now, "Online"); SaveClients();
-    return Results.Ok(new { ok = true, serverTime = now });
+    var watchMode = watching.TryGetValue(id, out var wr) && wr.Until > now ? wr.Mode : null;
+return Results.Ok(new { ok = true, serverTime = now, watch = watchMode });
 });
 
 app.MapGet("/api/clients", (HttpContext ctx) =>
@@ -245,6 +249,46 @@ app.MapGet("/api/submissions/zip", (HttpContext ctx) =>
         throw;
     }
 });
+
+// ===== Pantau layar =====
+app.MapPost("/api/watch", (HttpContext ctx, WatchBody? body) =>
+{
+    if (!TokenIsValid(ctx, token)) return Results.Unauthorized();
+    if (body is null) return Results.BadRequest(new { error = "Data kosong." });
+    var mode = body.Mode == "full" ? "full" : "thumb";
+    var until = DateTimeOffset.UtcNow.AddSeconds(Math.Clamp(body.Seconds, 5, 30));
+    var ids = body.ClientIds is { Length: > 0 } ? body.ClientIds : clients.Keys.ToArray();
+    foreach (var id in ids.Take(200)) if (clients.ContainsKey(id)) watching[id] = new WatchRequest(mode, until);
+    return Results.Ok(new { ok = true });
+});
+app.MapPost("/api/screens/{clientId}", async (HttpContext ctx, string clientId) =>
+{
+    if (!TokenIsValid(ctx, clientToken)) return Results.Unauthorized();
+    if (!clients.ContainsKey(clientId)) return Results.NotFound();
+    if (ctx.Request.ContentLength is null or > 3_000_000) return Results.BadRequest(new { error = "Ukuran gambar tidak valid." });
+    using var ms = new MemoryStream((int)ctx.Request.ContentLength.Value);
+    await ctx.Request.Body.CopyToAsync(ms);
+    int.TryParse(ctx.Request.Query["w"].ToString(), out var wd); int.TryParse(ctx.Request.Query["h"].ToString(), out var ht);
+    var m = ctx.Request.Query["m"].ToString() == "full" ? "full" : "thumb";
+    screens[clientId] = new ScreenFrame(ms.ToArray(), DateTimeOffset.UtcNow, wd, ht, m);
+    var stillWatched = watching.TryGetValue(clientId, out var wr) && wr.Until > DateTimeOffset.UtcNow ? wr.Mode : null;
+    return Results.Ok(new { watch = stillWatched });
+});
+app.MapGet("/api/screens", (HttpContext ctx) =>
+{
+    if (!TokenIsValid(ctx, token)) return Results.Unauthorized();
+    var cutoff = DateTimeOffset.UtcNow.AddSeconds(-30);
+    return Results.Ok(screens.Where(kv => kv.Value.Mode == "thumb" && kv.Value.Utc > cutoff)
+        .ToDictionary(kv => kv.Key, kv => new { t = kv.Value.Utc, w = kv.Value.Width, h = kv.Value.Height, jpg = Convert.ToBase64String(kv.Value.Jpeg) }));
+});
+app.MapGet("/api/screens/{clientId}", (HttpContext ctx, string clientId) =>
+{
+    if (!TokenIsValid(ctx, token)) return Results.Unauthorized();
+    return screens.TryGetValue(clientId, out var f) && f.Utc > DateTimeOffset.UtcNow.AddSeconds(-30)
+        ? Results.Ok(new { t = f.Utc, w = f.Width, h = f.Height, mode = f.Mode, jpg = Convert.ToBase64String(f.Jpeg) })
+        : Results.NotFound();
+});
+
 app.MapGet("/api/health", () => Results.Ok(new { ok = true, app = "MarsaLab.Admin", version = "1.2.0" }));
 app.Lifetime.ApplicationStarted.Register(() =>
 {
@@ -294,3 +338,6 @@ record FileItem(string Name, long Size, DateTime ModifiedUtc);
 record SubmissionItem(string Student, string Name, long Size, DateTime ModifiedUtc);
 record CommandResultRequest(string ClientId, bool Success, string? Result);
 record LabCommand(string Id, string ClientId, string Type, string Message, DateTimeOffset CreatedUtc, string Status, string Result);
+record ScreenFrame(byte[] Jpeg, DateTimeOffset Utc, int Width, int Height, string Mode);
+record WatchRequest(string Mode, DateTimeOffset Until);
+record WatchBody(string[]? ClientIds, string? Mode, int Seconds = 15);
