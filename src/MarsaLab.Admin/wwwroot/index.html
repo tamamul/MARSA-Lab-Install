@@ -19,9 +19,23 @@
 <div class="foot">MARSA Lab Tahap 1 ยท Jaringan lokal. Ganti token pada appsettings.json server/client dan konstanta TOKEN di halaman ini sebelum digunakan. Gunakan hanya pada komputer lab yang dikelola sekolah.</div></main><div class="toast" id="toast"></div>
 <script>
 // Harus sama persis dengan Lab:Token pada appsettings.json server dan Token pada client.
-let TOKEN=localStorage.getItem('marsaToken')||prompt('Masukkan token lab:')||'';
-localStorage.setItem('marsaToken',TOKEN);
+let TOKEN=localStorage.getItem('marsaToken')||'';
+document.body.style.visibility='hidden';
 const headers={'X-Marsa-Token':TOKEN,'Content-Type':'application/json'};
+async function gate(){
+  for(;;){
+    if(!TOKEN){
+      TOKEN=(prompt('Masukkan token lab:')||'').trim();
+      if(!TOKEN){document.body.innerHTML='<p style="padding:30px">Token diperlukan. Tekan F5 untuk mengulang.</p>';document.body.style.visibility='visible';return false}
+    }
+    try{
+      const r=await fetch('/api/summary',{headers:{'X-Marsa-Token':TOKEN}});
+      if(r.ok){localStorage.setItem('marsaToken',TOKEN);headers['X-Marsa-Token']=TOKEN;document.body.style.visibility='visible';return true}
+      if(r.status===401){alert('Token salah, coba lagi.');TOKEN='';localStorage.removeItem('marsaToken');continue}
+    }catch{}
+    await new Promise(s=>setTimeout(s,1000));
+  }
+}
 const checked=new Set();
 const getGroups=()=>{try{return JSON.parse(localStorage.getItem('marsaGroups')||'{}')}catch{return{}}};
 function addGroupOptions(sel){const o=document.createElement('option');o.value='#checked';o.textContent='Yang dicentang ('+checked.size+')';sel.append(o);for(const n of Object.keys(getGroups())){const g=document.createElement('option');g.value='group:'+n;g.textContent='Kelompok: '+n;sel.append(g)}}
@@ -44,5 +58,4 @@ if(!confirm(prompts[type]))return;
 const ids=resolveTargets();if(ids&&!ids.length){toast('Belum ada komputer dicentang / kelompok kosong.');return}try{const result=await api('/api/commands',{method:'POST',body:JSON.stringify({type,targetClientId:ids?'':target,targetClientIds:ids,message})});
 toast(`Perintah ${label(type)} dikirim ke antrean untuk ${result.queued} komputer.`);await loadRecent()}catch(e){toast('Gagal: '+e.message)}}
 async function loadRecent(){try{const data=await api('/api/commands/recent');const rows=document.getElementById('history');rows.replaceChildren();if(!data.length){rows.innerHTML='<tr><td colspan="5" class="empty">Belum ada perintah.</td></tr>';return}for(const c of data){const tr=document.createElement('tr');for(const v of [fmt(c.createdUtc),c.clientId,label(c.type),c.status,c.result||c.message||'โ€”']){const td=document.createElement('td');td.textContent=v;tr.append(td)}rows.append(tr)}}catch(e){}}
-document.getElementById('filter').addEventListener('input',loadClients);loadClients();loadRecent();setInterval(loadClients,3000);setInterval(loadRecent,5000);
-</script></body></html>
+gate().then(ok=>{if(!ok)return;document.getElementById('filter').addEventListener('input',loadClients);loadClients();loadRecent();setInterval(loadClients,3000);setInterval(loadRecent,5000)});</script></body></html>
