@@ -133,6 +133,6 @@ procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if (CurStep = ssPostInstall) and not FileExists(ConfigPath) then
     SaveStringToFile(ConfigPath,
-    '{"Lab":{"Port":5080,"Token":"' + TokenPage.Values[0] + '","ClientToken":"' + TokenPage.Values[2] + '","OfflineAfterSeconds":15,"StudentCode":"' + TokenPage.Values[1] + '","MaxUploadMB":50},"Logging":{"LogLevel":{"Default":"Information","Microsoft.AspNetCore":"Warning"}}}'
+    '{"Lab":{"Port":5080,"Token":"' + TokenPage.Values[0] + '","ClientToken":"' + TokenPage.Values[2] + '","OfflineAfterSeconds":15,"StudentCode":"' + TokenPage.Values[1] + '","MaxUploadMB":50},"Logging":{"LogLevel":{"Default":"Information","Microsoft.AspNetCore":"Warning"}}}',
       False);
 end;
