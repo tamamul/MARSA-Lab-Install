@@ -70,7 +70,14 @@ static async Task ExecuteCommand(LabCommand command, HttpClient http, string cli
    		 if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("Fitur ini hanya untuk Windows.");
 		    var shareUrl = new Uri(http.BaseAddress!, "siswa.html").ToString();
  		   Process.Start(new ProcessStartInfo(shareUrl) { UseShellExecute = true });
-		    result = "Halaman tugas dibuka di browser."; success = true; break;    
+		    result = "Halaman tugas dibuka di browser."; success = true; break;
+case "open-url":
+    if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("Fitur ini hanya untuk Windows.");
+    var okUrl = Uri.TryCreate(command.Message, UriKind.Absolute, out var openUrl);
+    if (!okUrl || (openUrl!.Scheme != Uri.UriSchemeHttp && openUrl.Scheme != Uri.UriSchemeHttps))
+        throw new InvalidOperationException("Alamat tidak valid.");
+    Process.Start(new ProcessStartInfo(openUrl.AbsoluteUri) { UseShellExecute = true });
+    result = "Website dibuka: " + openUrl.Host; success = true; break;    
             default: throw new InvalidOperationException("Perintah tidak diizinkan.");
         }
     }
