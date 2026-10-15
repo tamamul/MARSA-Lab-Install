@@ -78,21 +78,27 @@ begin
   Result := ExpandConstant('{app}\appsettings.json');
 end;
 
-procedure InitializeWizard;
-var rc: Integer; S: AnsiString; Tok: String;
+function NewToken(const Name: String): String;
+var rc: Integer; S: AnsiString;
 begin
-  Tok := '';
-  ExtractTemporaryFile('gen-token.ps1');
+  Result := '';
   if Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'),
-      ExpandConstant('-NoProfile -ExecutionPolicy Bypass -File "{tmp}\gen-token.ps1" -OutFile "{tmp}\token.txt"'),
+      ExpandConstant('-NoProfile -ExecutionPolicy Bypass -File "{tmp}\gen-token.ps1" -OutFile "{tmp}\' + Name + '"'),
       '', SW_HIDE, ewWaitUntilTerminated, rc) and (rc = 0) then
-    if LoadStringFromFile(ExpandConstant('{tmp}\token.txt'), S) then Tok := Trim(String(S));
+    if LoadStringFromFile(ExpandConstant('{tmp}\' + Name), S) then Result := Trim(String(S));
+end;
+
+procedure InitializeWizard;
+begin
+  ExtractTemporaryFile('gen-token.ps1');
   TokenPage := CreateInputQueryPage(wpSelectDir, 'Pengaturan server', 'Token dan kode kelas',
-    'Token ini harus sama di semua PC lab (diisi saat memasang Client). Catat atau salin sebelum lanjut.');
-  TokenPage.Add('Token lab (minimal 24 huruf/angka):', False);
+    'Token admin hanya untuk PC guru. Token client dipasang di semua PC lab. Catat keduanya sebelum lanjut.');
+  TokenPage.Add('Token admin (khusus PC guru, min. 24 huruf/angka):', False);
   TokenPage.Add('Kode kelas siswa (opsional, huruf/angka):', False);
-  TokenPage.Values[0] := ExpandConstant('{param:TOKEN|' + Tok + '}');
+  TokenPage.Add('Token client (untuk PC lab, min. 24 huruf/angka):', False);
+  TokenPage.Values[0] := ExpandConstant('{param:TOKEN|' + NewToken('t1.txt') + '}');
   TokenPage.Values[1] := ExpandConstant('{param:CODE|}');
+  TokenPage.Values[2] := ExpandConstant('{param:CTOKEN|' + NewToken('t2.txt') + '}');
 end;
 
 function ShouldSkipPage(PageID: Integer): Boolean;
@@ -107,9 +113,11 @@ begin
   if CurPageID = TokenPage.ID then
   begin
     if (Length(TokenPage.Values[0]) < 24) or not IsAlnum(TokenPage.Values[0]) then
-    begin MsgBox('Token minimal 24 karakter, hanya huruf dan angka.', mbError, MB_OK); Result := False; end
+    begin MsgBox('Token admin minimal 24 karakter, hanya huruf dan angka.', mbError, MB_OK); Result := False; end
     else if not IsAlnum(TokenPage.Values[1]) then
-    begin MsgBox('Kode kelas hanya boleh huruf dan angka.', mbError, MB_OK); Result := False; end;
+    begin MsgBox('Kode kelas hanya boleh huruf dan angka.', mbError, MB_OK); Result := False; end
+    else if (Length(TokenPage.Values[2]) < 24) or not IsAlnum(TokenPage.Values[2]) or (TokenPage.Values[2] = TokenPage.Values[0]) then
+    begin MsgBox('Token client minimal 24 karakter (huruf/angka) dan harus berbeda dari token admin.', mbError, MB_OK); Result := False; end;
   end;
 end;
 
@@ -125,6 +133,6 @@ procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if (CurStep = ssPostInstall) and not FileExists(ConfigPath) then
     SaveStringToFile(ConfigPath,
-      '{"Lab":{"Port":5080,"Token":"' + TokenPage.Values[0] + '","OfflineAfterSeconds":15,"StudentCode":"' + TokenPage.Values[1] + '","MaxUploadMB":50},"Logging":{"LogLevel":{"Default":"Information","Microsoft.AspNetCore":"Warning"}}}',
+    '{"Lab":{"Port":5080,"Token":"' + TokenPage.Values[0] + '","ClientToken":"' + TokenPage.Values[2] + '","OfflineAfterSeconds":15,"StudentCode":"' + TokenPage.Values[1] + '","MaxUploadMB":50},"Logging":{"LogLevel":{"Default":"Information","Microsoft.AspNetCore":"Warning"}}}'
       False);
 end;
