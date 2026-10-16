@@ -92,10 +92,10 @@ procedure InitializeWizard;
 begin
   ExtractTemporaryFile('gen-token.ps1');
   TokenPage := CreateInputQueryPage(wpSelectDir, 'Pengaturan server', 'Token dan kode kelas',
-    'Token admin hanya untuk PC guru. Token client dipasang di semua PC lab. Catat keduanya sebelum lanjut.');
+    'Token admin hanya untuk PC guru. Token client dipasang di semua PC lab. Catat keduanya di notepad atau lainya sebelum lanjut.');
   TokenPage.Add('Token admin (khusus PC guru, min. 24 huruf/angka):', False);
   TokenPage.Add('Kode kelas siswa (opsional, huruf/angka):', False);
-  TokenPage.Add('Token client (untuk PC lab, min. 24 huruf/angka):', False);
+  TokenPage.Add('Token client (untuk PC lab Client, min. 24 huruf/angka):', False);
   TokenPage.Values[0] := ExpandConstant('{param:TOKEN|' + NewToken('t1.txt') + '}');
   TokenPage.Values[1] := ExpandConstant('{param:CODE|}');
   TokenPage.Values[2] := ExpandConstant('{param:CTOKEN|' + NewToken('t2.txt') + '}');
