@@ -62,3 +62,11 @@ Jalankan client dari sesi pengguna Windows, bukan sebagai service Session 0, sup
 - Hak administrator mungkin diperlukan untuk perintah daya tergantung kebijakan Windows.
 - Server menggunakan HTTP di LAN, bukan HTTPS. Jangan gunakan di jaringan publik atau meneruskan port ke internet. Untuk lingkungan lebih ketat, tambahkan autentikasi admin terpisah, HTTPS, dan pembatasan firewall.
 - Riwayat perintah yang tampil di dashboard berada di memori dan akan kosong saat server restart; salinan audit JSONL tetap tersimpan pada folder data lokal admin. Status komputer disimpan di `%LOCALAPPDATA%\MarsaLab\Admin\clients.json`.
+
+Alur perubahan
+Di tampilan besar ada tombol Kontrol: Mati/AKTIF. Default-nya mati, jadi tidak ada klik tak sengaja.
+Saat aktif, klik kiri/kanan, geser (drag), scroll, dan ketikan di gambar dikirim ke server, lalu ikut balasan upload gambar ke client. Client menjalankannya lewat SendInput.
+Setelah ada input, client mempercepat tangkapan layar berikutnya (250 ms), jadi hasil klik terlihat sekitar 1 detik kemudian.
+Input hanya diterima kalau tampilan besar sedang terbuka. Antrean dikosongkan setiap tampilan berganti atau ditutup, jadi tidak ada klik lama yang "nyangkut".
+Bar tab Dashboard | Berkas & Tugas menempel di atas dan selalu terlihat.
+Loading: spinner dan tulisan "menunggu gambar", pesan jelas kalau gambar tidak datang, serta umur gambar ("diperbarui 2 dtk lalu").
