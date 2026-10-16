@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>MARSA Lab ยท Berkas &amp; Tugas</title>
+<title>MARSA Lab Berkas &amp; Tugas</title>
 <style>
 :root{color-scheme:dark;--bg:#0b141a;--panel:#13232b;--line:#29424c;--cyan:#00c2d1;--muted:#9bb1ba}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:#eef8fa;font:15px Segoe UI,Arial,sans-serif}
@@ -12,7 +12,7 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:9px 7px;
 th{font-size:11px;color:var(--muted);text-transform:uppercase}.tw{overflow:auto}#err{color:#ff7777}a{color:var(--cyan)}
 </style></head><body><main class="wrap">
 <h1>Berkas &amp; Tugas</h1>
-<div class="muted">Alamat untuk siswa: <b id="url"></b> ยท <a href="index.html">โ Kontrol komputer</a></div>
+<div class="muted">Alamat untuk siswa: <b id="url"></b> ยท <a href="index.html">โKontrol komputer</a></div>
 <div id="err"></div>
 <section class="panel" style="margin-top:14px"><h2>Bagikan file ke siswa</h2>
 <input type="file" id="f" multiple> <button onclick="upload()">Unggah</button>
@@ -46,7 +46,7 @@ const fmt=d=>new Date(d).toLocaleString('id-ID',{hour12:false});
 function cell(tr,t){const td=document.createElement('td');td.textContent=t;tr.append(td);return td}
 function btn(td,text,cls,fn){const b=document.createElement('button');b.textContent=text;if(cls)b.className=cls;b.onclick=fn;td.append(b)}
 async function api(u,o={}){const r=await fetch(u,{...o,headers:{...H,...(o.headers||{})}});
- if(r.status===401){localStorage.removeItem('marsaToken');throw Error('Token salah โ€” muat ulang halaman.')}
+ if(r.status===401){localStorage.removeItem('marsaToken');throw Error('Token salah muat ulang halaman.')}
  if(!r.ok)throw Error((await r.json().catch(()=>({}))).error||'HTTP '+r.status);return r}
 async function upload(){const inp=document.getElementById('f');if(!inp.files.length){alert('Pilih file dulu.');return}
  for(const file of inp.files){const fd=new FormData();fd.append('file',file);try{await api('/api/files',{method:'POST',body:fd})}catch(e){alert(file.name+': '+e.message)}}
