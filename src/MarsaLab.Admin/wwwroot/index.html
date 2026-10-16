@@ -48,13 +48,24 @@ dialog::backdrop{background:#0009}.dact{display:flex;gap:8px;justify-content:fle
 .foot{color:var(--muted);font-size:12px;text-align:center;margin-top:10px}
 .shot{width:100%;border-radius:8px;margin-bottom:6px;display:block;background:#000;cursor:zoom-in}
 #view{max-width:96vw}#view img{max-width:100%;max-height:78vh;border-radius:8px;display:block;margin:10px auto;background:#000}
+.tabs{position:sticky;top:0;z-index:6;display:flex;gap:6px;background:var(--bg);padding:6px 0 10px;margin-bottom:6px}
+.tabs a{padding:9px 16px;border-radius:10px;text-decoration:none;color:var(--text);background:var(--panel);border:1px solid var(--line);font-weight:600}
+.tabs a.on{background:var(--cyan);color:var(--onc);border-color:var(--cyan)}
+.spin{width:14px;height:14px;border:3px solid var(--line);border-top-color:var(--cyan);border-radius:50%;animation:sp .8s linear infinite;display:inline-block;vertical-align:middle}
+@keyframes sp{to{transform:rotate(360deg)}}
+.shot.ph{display:grid;place-items:center;aspect-ratio:16/9;background:var(--panel);cursor:default;color:var(--muted);font-size:12px;text-align:center;padding:6px}
+.vh{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.vwrap{position:relative;min-height:200px}
+.vload{position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:var(--muted);padding:10px}
+.ctlb{background:var(--red);color:#fff;border-radius:8px;padding:6px 10px;margin-top:8px;font-size:13px;font-weight:600}
+#viewImg{touch-action:none;user-select:none}
 @media(max-width:900px){.main{grid-template-columns:1fr}.side{position:static}.bar{display:flex}}
 </style></head><body>
 <main class="wrap">
 <div class="top"><div class="brand"><b>MARSA</b> Lab</div><div class="sp"></div>
 <span class="pill" id="conn"><i></i><span id="connTxt">Menghubungkan...</span></span>
-<a class="btn sec" href="berkas.html">Berkas &amp; Tugas</a>
 <button class="btn sec" id="themeBtn" onclick="toggleTheme()">Tema</button></div>
+<nav class="tabs"><a class="on" href="index.html">🖥 Dashboard</a><a href="berkas.html">📁 Berkas &amp; Tugas</a></nav>
 
 <div class="stats"><div class="stat"><div class="n" id="total">0</div><div class="l">Total</div></div>
 <div class="stat on"><div class="n" id="online">0</div><div class="l">Online</div></div>
@@ -71,6 +82,7 @@ dialog::backdrop{background:#0009}.dact{display:flex;gap:8px;justify-content:fle
 <button class="btn sec" onclick="clearSel()">Kosongkan</button>
 <button class="btn sec" onclick="saveGroup()">+ Simpan kelompok</button></div>
 <div class="tools" id="groups"></div>
+<div class="muted" id="monStat" hidden style="margin-bottom:8px"></div>
 <div class="grid" id="grid"></div></section>
 
 <aside class="panel side" id="control"><h2>Kontrol</h2>
@@ -99,7 +111,11 @@ dialog::backdrop{background:#0009}.dact{display:flex;gap:8px;justify-content:fle
 <dialog id="dlg"><form method="dialog"><div id="dlgText"></div>
 <div class="dact"><button class="btn sec" value="no">Batal</button><button class="btn" value="yes">Ya, kirim</button></div></form></dialog>
 
-<dialog id="view"><div style="display:flex;align-items:center;gap:10px"><b id="viewTitle" style="flex:1"></b><button class="btn sec" onclick="document.getElementById('view').close()">Tutup</button></div><img id="viewImg" alt=""></dialog>
+<dialog id="view"><div class="vh"><b id="viewTitle"></b><span id="viewAge" class="muted"></span><span class="sp"></span>
+<button class="btn sec" id="ctlBtn" onclick="toggleCtl()">🖱 Kontrol: Mati</button>
+<button class="btn sec" onclick="document.getElementById('view').close()">Tutup</button></div>
+<div class="ctlb" id="ctlBanner" hidden>KONTROL AKTIF — klik dan ketik di gambar dikirim ke PC ini (hasil tampil ±1 detik kemudian)</div>
+<div class="vwrap"><img id="viewImg" alt=""><div class="vload" id="viewLoad"></div></div></dialog> 
  
 <script>
 const $=id=>document.getElementById(id);
@@ -170,14 +186,21 @@ function render(){
   const isOn=c.status==='Online',s=sel.has(c.clientId);
   const card=h('div','pc '+(isOn?'on':'off')+(s?' sel':''));
     const sh=shots[c.clientId];
-  if(monitor&&isOn&&sh&&Date.now()-new Date(sh.t)<20000){const im=h('img','shot');im.src='data:image/jpeg;base64,'+sh.jpg;im.onclick=e=>{e.stopPropagation();openView(c.clientId)};card.append(im)}
+  if(monitor&&isOn){
+   if(sh&&Date.now()-new Date(sh.t)<20000){const im=h('img','shot');im.src='data:image/jpeg;base64,'+sh.jpg;im.onclick=e=>{e.stopPropagation();openView(c.clientId)};card.append(im)}
+   else{const ph=h('div','shot ph');if(Date.now()-monStart<15000){ph.append(h('span','spin'),document.createTextNode(' Menunggu gambar...'))}else ph.textContent='Tidak ada gambar (layar terkunci / client belum versi baru)';card.append(ph)}}
   card.append(h('div','ck',s?'✓':''),h('span','dot'),h('div','nm',c.computerName),h('div','ip',c.ipAddress),h('div','ago',isOn?'Online':'Terakhir '+ago(c.lastSeenUtc)));
   if(isOn){const v=h('button','chip','🔍 Lihat');v.style.marginTop='6px';v.onclick=e=>{e.stopPropagation();openView(c.clientId)};card.append(v)}
   card.onclick=()=>{if(!isOn)return;s?sel.delete(c.clientId):sel.add(c.clientId);render()};
   g.append(card)}
  const txt=sel.size?sel.size+' komputer dipilih':'Semua komputer online ('+on+')';
- $('selinfo').textContent=txt;$('selbar').textContent='Target: '+txt}
-
+ $('selinfo').textContent=txt;$('selbar').textContent='Target: '+txt;
+ const ms=$('monStat');ms.hidden=!monitor;
+ if(monitor){
+  const fresh=clients.filter(c=>c.status==='Online'&&shots[c.clientId]&&Date.now()-new Date(shots[c.clientId].t)<20000).length;
+  ms.replaceChildren();
+  if(fresh<on&&Date.now()-monStart<15000){ms.append(h('span','spin'),document.createTextNode(' '))}
+  ms.append(document.createTextNode('Memantau '+on+' PC online · '+fresh+' sudah menampilkan gambar · diperbarui tiap ±3 detik'))}}
 /* ---- kirim perintah ---- */
 async function send(type){
  const message=$('message').value.trim();
@@ -209,8 +232,9 @@ async function loadRecent(){
 for(const t of ['Kumpulkan tugas 5 menit lagi.','Harap tenang dan kerjakan sendiri.','Pelajaran selesai, simpan pekerjaan Anda.']){
  const b=h('button','chip',t);b.onclick=()=>{$('message').value=t};$('tpl').append(b)}
 
-/* ---- pantau layar ---- */
-let monitor=false,shots={},viewId=null,viewTimer=null,viewBusy=false;
+/* ---- pantau layar & kontrol jarak jauh ---- */
+let monitor=false,monStart=0,shots={},viewId=null,viewTimer=null,viewBusy=false,viewSince=0,viewGot=false;
+let ctl=false,ctlBuf=[],lastMove=0;
 async function monitorTick(){
  if(!monitor)return;
  try{
@@ -218,17 +242,65 @@ async function monitorTick(){
   if(ids.length)await api('/api/watch',{method:'POST',body:JSON.stringify({clientIds:ids,mode:'thumb',seconds:15})});
   shots=await api('/api/screens');render()
  }catch{}}
-function toggleMonitor(){monitor=!monitor;$('monBtn').classList.toggle('act',monitor);if(!monitor)shots={};render();monitorTick()}
+function toggleMonitor(){
+ monitor=!monitor;monStart=Date.now();$('monBtn').classList.toggle('act',monitor);
+ if(monitor)toast('Memantau dimulai. Gambar pertama muncul dalam ±5 detik, mohon tunggu.');else shots={};
+ render();monitorTick()}
+function setLoad(on,text){
+ const l=$('viewLoad');l.style.display=on?'grid':'none';l.replaceChildren();
+ if(on){const d=h('div');d.append(h('span','spin'),document.createTextNode(' '+text));l.append(d)}}
 function openView(id){
- viewId=id;$('viewTitle').textContent=byId[id]?byId[id].computerName:id;$('viewImg').removeAttribute('src');
+ viewId=id;viewSince=Date.now();viewGot=false;ctl=false;ctlBuf=[];syncCtl();
+ $('viewTitle').textContent=byId[id]?byId[id].computerName:id;$('viewAge').textContent='';
+ const im=$('viewImg');im.removeAttribute('src');im.style.visibility='hidden';
+ setLoad(true,'Menyambung ke layar PC... gambar pertama muncul dalam ±5 detik.');
  $('view').showModal();viewTick();viewTimer=setInterval(viewTick,1000)}
 async function viewTick(){
  if(!viewId||viewBusy)return;viewBusy=true;
- try{await api('/api/watch',{method:'POST',body:JSON.stringify({clientIds:[viewId],mode:'full',seconds:10})});
+ try{
+  await api('/api/watch',{method:'POST',body:JSON.stringify({clientIds:[viewId],mode:'full',seconds:10})});
   const f=await api('/api/screens/'+encodeURIComponent(viewId));
-  if(viewId)$('viewImg').src='data:image/jpeg;base64,'+f.jpg}catch{}
+  if(viewId){const im=$('viewImg');im.src='data:image/jpeg;base64,'+f.jpg;im.style.visibility='visible';viewGot=true;setLoad(false);$('viewAge').textContent='· diperbarui '+ago(f.t)}
+ }catch{
+  if(viewId&&!viewGot&&Date.now()-viewSince>15000)setLoad(true,'Belum ada gambar. Pastikan client sudah versi terbaru dan layar PC tidak terkunci.');
+ }
  viewBusy=false}
-$('view').addEventListener('close',()=>{clearInterval(viewTimer);viewId=null});
+$('view').addEventListener('close',()=>{clearInterval(viewTimer);viewId=null;ctl=false;ctlBuf=[]});
+$('view').addEventListener('cancel',e=>{if(ctl)e.preventDefault()});
+
+/* kontrol jarak jauh */
+function syncCtl(){
+ const b=$('ctlBtn');b.textContent='🖱 Kontrol: '+(ctl?'AKTIF':'Mati');
+ b.classList.toggle('danger',ctl);b.classList.toggle('sec',!ctl);
+ $('ctlBanner').hidden=!ctl;$('viewImg').style.cursor=ctl?'crosshair':'default'}
+function toggleCtl(){ctl=!ctl;ctlBuf=[];syncCtl();if(ctl)toast('Kontrol aktif: klik dan ketik di gambar. Hasilnya tampil ±1 detik kemudian.')}
+function ctlPush(ev){ctlBuf.push(ev);if(ctlBuf.length>=60)ctlFlush()}
+async function ctlFlush(){
+ if(!ctlBuf.length||!viewId)return;const batch=ctlBuf.splice(0,60);
+ try{await api('/api/control/'+encodeURIComponent(viewId),{method:'POST',body:JSON.stringify(batch)})}
+ catch(e){toast('Kontrol gagal: '+e.message)}}
+const vi=$('viewImg'),BTN=['left','middle','right'];
+const pos=e=>{const r=vi.getBoundingClientRect();return{x:Math.min(1,Math.max(0,(e.clientX-r.left)/r.width)),y:Math.min(1,Math.max(0,(e.clientY-r.top)/r.height))}};
+vi.addEventListener('dragstart',e=>e.preventDefault());
+vi.addEventListener('contextmenu',e=>{if(ctl)e.preventDefault()});
+vi.addEventListener('pointerdown',e=>{if(!ctl)return;e.preventDefault();vi.setPointerCapture(e.pointerId);ctlPush({t:'down',...pos(e),b:BTN[e.button]||'left'})});
+vi.addEventListener('pointerup',e=>{if(!ctl)return;e.preventDefault();ctlPush({t:'up',...pos(e),b:BTN[e.button]||'left'})});
+vi.addEventListener('pointermove',e=>{if(!ctl||!e.buttons||Date.now()-lastMove<80)return;lastMove=Date.now();ctlPush({t:'move',...pos(e)})});
+vi.addEventListener('wheel',e=>{if(!ctl)return;e.preventDefault();ctlPush({t:'wheel',...pos(e),d:e.deltaY<0?120:-120})},{passive:false});
+const VK={Backspace:8,Tab:9,Enter:13,Escape:27,' ':32,PageUp:33,PageDown:34,End:35,Home:36,ArrowLeft:37,ArrowUp:38,ArrowRight:39,ArrowDown:40,Insert:45,Delete:46};
+function vkOf(e){
+ if(VK[e.key])return VK[e.key];
+ if(/^F([1-9]|1[0-2])$/.test(e.key))return 111+Number(e.key.slice(1));
+ if(e.key.length===1){const c=e.key.toUpperCase().charCodeAt(0);if((c>=65&&c<=90)||(c>=48&&c<=57))return c}
+ return 0}
+document.addEventListener('keydown',e=>{
+ if(!ctl||!viewId||!$('view').open)return;
+ e.preventDefault();
+ const mods=[];if(e.ctrlKey)mods.push('ctrl');if(e.shiftKey)mods.push('shift');if(e.altKey)mods.push('alt');
+ if(e.key.length===1&&!e.ctrlKey&&!e.altKey&&!e.metaKey){ctlPush({t:'text',s:e.key});return}
+ const vk=vkOf(e);if(vk)ctlPush({t:'key',vk,mods})
+},true);
+setInterval(ctlFlush,120);
 setInterval(monitorTick,4000);
  
 renderGroups();
