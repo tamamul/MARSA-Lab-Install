@@ -51,6 +51,7 @@ app.UseStaticFiles();
 
 var screens = new System.Collections.Concurrent.ConcurrentDictionary<string, ScreenFrame>();
 var watching = new System.Collections.Concurrent.ConcurrentDictionary<string, WatchRequest>();
+var inputs = new System.Collections.Concurrent.ConcurrentDictionary<string, System.Collections.Concurrent.ConcurrentQueue<InputEvent>>();
 
 app.MapPost("/api/heartbeat", (HttpContext ctx, HeartbeatRequest? request) =>
 {
@@ -258,7 +259,13 @@ app.MapPost("/api/watch", (HttpContext ctx, WatchBody? body) =>
     var mode = body.Mode == "full" ? "full" : "thumb";
     var until = DateTimeOffset.UtcNow.AddSeconds(Math.Clamp(body.Seconds, 5, 30));
     var ids = body.ClientIds is { Length: > 0 } ? body.ClientIds : clients.Keys.ToArray();
-    foreach (var id in ids.Take(200)) if (clients.ContainsKey(id)) watching[id] = new WatchRequest(mode, until);
+foreach (var id in ids.Take(200))
+{
+    if (!clients.ContainsKey(id)) continue;
+    var sameMode = watching.TryGetValue(id, out var cur) && cur.Mode == mode && cur.Until > DateTimeOffset.UtcNow;
+    if (!sameMode) inputs.TryRemove(id, out _);
+    watching[id] = new WatchRequest(mode, until);
+}
     return Results.Ok(new { ok = true });
 });
 app.MapPost("/api/screens/{clientId}", async (HttpContext ctx, string clientId) =>
@@ -272,7 +279,7 @@ app.MapPost("/api/screens/{clientId}", async (HttpContext ctx, string clientId) 
     var m = ctx.Request.Query["m"].ToString() == "full" ? "full" : "thumb";
     screens[clientId] = new ScreenFrame(ms.ToArray(), DateTimeOffset.UtcNow, wd, ht, m);
     var stillWatched = watching.TryGetValue(clientId, out var wr) && wr.Until > DateTimeOffset.UtcNow ? wr.Mode : null;
-    return Results.Ok(new { watch = stillWatched });
+	return Results.Ok(new { watch = stillWatched, input = DrainInput(clientId) });
 });
 app.MapGet("/api/screens", (HttpContext ctx) =>
 {
@@ -287,6 +294,18 @@ app.MapGet("/api/screens/{clientId}", (HttpContext ctx, string clientId) =>
     return screens.TryGetValue(clientId, out var f) && f.Utc > DateTimeOffset.UtcNow.AddSeconds(-30)
         ? Results.Ok(new { t = f.Utc, w = f.Width, h = f.Height, mode = f.Mode, jpg = Convert.ToBase64String(f.Jpeg) })
         : Results.NotFound();
+});
+
+app.MapPost("/api/control/{clientId}", (HttpContext ctx, string clientId, InputEvent[]? events) =>
+{
+    if (!TokenIsValid(ctx, token)) return Results.Unauthorized();
+    if (events is null || events.Length == 0 || events.Length > 60) return Results.BadRequest(new { error = "Event tidak valid." });
+    if (!(watching.TryGetValue(clientId, out var w) && w.Mode == "full" && w.Until > DateTimeOffset.UtcNow))
+        return Results.BadRequest(new { error = "Buka tampilan besar dulu." });
+    var q = inputs.GetOrAdd(clientId, _ => new System.Collections.Concurrent.ConcurrentQueue<InputEvent>());
+    if (q.Count > 200) return Results.StatusCode(429);
+    foreach (var ev in events) q.Enqueue(ev);
+    return Results.Ok(new { queued = events.Length });
 });
 
 app.MapGet("/api/health", () => Results.Ok(new { ok = true, app = "MarsaLab.Admin", version = "1.2.0" }));
@@ -325,6 +344,13 @@ static string SafeName(string? s, int max = 80)
     n = n.Trim('.', ' ');
     return n.Length > max ? n[..max] : n;
 }
+InputEvent[] DrainInput(string id)
+{
+    var list = new List<InputEvent>();
+    if (inputs.TryGetValue(id, out var q)) while (list.Count < 50 && q.TryDequeue(out var ev)) list.Add(ev);
+    return list.ToArray();
+}
+
 bool StudentOk(HttpContext ctx) => string.IsNullOrEmpty(studentCode)
     || ctx.Request.Query["code"].ToString() == studentCode
     || ctx.Request.Headers["X-Marsa-Code"].ToString() == studentCode;
@@ -341,3 +367,4 @@ record LabCommand(string Id, string ClientId, string Type, string Message, DateT
 record ScreenFrame(byte[] Jpeg, DateTimeOffset Utc, int Width, int Height, string Mode);
 record WatchRequest(string Mode, DateTimeOffset Until);
 record WatchBody(string[]? ClientIds, string? Mode, int Seconds = 15);
+record InputEvent(string T, double X, double Y, string? B, int Vk, string? S, string[]? Mods, int D);
