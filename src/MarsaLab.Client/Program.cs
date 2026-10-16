@@ -113,6 +113,7 @@ static async Task StreamScreen(HttpClient http, string clientId, string mode, Ca
         while (!ct.IsCancellationRequested && (mode == "thumb" || mode == "full"))
         {
             var full = mode == "full";
+			var gotInput = false;
             try
             {
                 var (jpeg, w, h) = CaptureJpeg(full ? 1280 : 320, full ? 70L : 55L);
@@ -120,12 +121,14 @@ static async Task StreamScreen(HttpClient http, string clientId, string mode, Ca
                 content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("image/jpeg");
                 using var res = await http.PostAsync($"api/screens/{Uri.EscapeDataString(clientId)}?w={w}&h={h}&m={mode}", content, ct);
                 if (!res.IsSuccessStatusCode) break;
-                mode = (await res.Content.ReadFromJsonAsync<WatchReply>(cancellationToken: ct))?.Watch ?? "";
+                var reply = await res.Content.ReadFromJsonAsync<WatchReply>(cancellationToken: ct);
+				mode = reply?.Watch ?? "";
+				if (reply?.Input is { Length: > 0 } inputs) { ApplyInput(inputs); gotInput = true; }
                 fails = 0;
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested) { break; }
             catch { if (++fails > 5) break; }
-            await Task.Delay(full ? 700 : 2500, ct);
+            await Task.Delay(gotInput ? 250 : full ? 700 : 2500, ct);
         }
     }
     catch { }
@@ -148,6 +151,50 @@ static (byte[] Jpeg, int W, int H) CaptureJpeg(int maxWidth, long quality)
     return (ms.ToArray(), tw, th);
 }
 
+[SupportedOSPlatform("windows")]
+static void ApplyInput(InputEvent[] events)
+{
+    static int Abs(double v) => (int)Math.Round(Math.Clamp(v, 0, 1) * 65535);
+    foreach (var ev in events.Take(60))
+    {
+        switch (ev.T)
+        {
+            case "move":
+                Native.Send(Native.M(0x8001, Abs(ev.X), Abs(ev.Y))); break;
+            case "down":
+            case "up":
+            {
+                var down = ev.T == "down";
+                uint f = ev.B == "right" ? (down ? 0x8u : 0x10u) : ev.B == "middle" ? (down ? 0x20u : 0x40u) : (down ? 0x2u : 0x4u);
+                Native.Send(Native.M(0x8001, Abs(ev.X), Abs(ev.Y)), Native.M(f));
+                break;
+            }
+            case "wheel":
+                Native.Send(Native.M(0x8001, Abs(ev.X), Abs(ev.Y)), Native.M(0x0800, 0, 0, unchecked((uint)ev.D))); break;
+            case "text":
+                foreach (var ch in (ev.S ?? "").Take(32)) Native.Send(Native.K(0, ch, 0x4), Native.K(0, ch, 0x6));
+                break;
+            case "key":
+            {
+                if (ev.Vk < 0x08 || ev.Vk > 0xFE || ev.Vk is 0x5B or 0x5C or 0x5F) break;
+                var mods = new List<ushort>();
+                foreach (var m in ev.Mods ?? [])
+                {
+                    var mv = m == "ctrl" ? (ushort)0x11 : m == "shift" ? (ushort)0x10 : m == "alt" ? (ushort)0x12 : (ushort)0;
+                    if (mv != 0 && !mods.Contains(mv)) mods.Add(mv);
+                }
+                var seq = new List<Native.INPUT>();
+                foreach (var mv in mods) seq.Add(Native.K(mv, 0, 0));
+                var ext = (ev.Vk is >= 0x21 and <= 0x28 or 0x2D or 0x2E) ? 0x1u : 0u;
+                seq.Add(Native.K((ushort)ev.Vk, 0, ext)); seq.Add(Native.K((ushort)ev.Vk, 0, ext | 0x2));
+                for (var i = mods.Count - 1; i >= 0; i--) seq.Add(Native.K(mods[i], 0, 0x2));
+                Native.Send(seq.ToArray());
+                break;
+            }
+        }
+    }
+}
+
 static bool TryLockWorkStation()
 {
     try
@@ -162,10 +209,19 @@ record HeartbeatRequest(string ClientId, string ComputerName);
 record LabCommand(string Id, string ClientId, string Type, string Message, DateTimeOffset CreatedUtc, string Status, string Result);
 record CommandResultRequest(string ClientId, bool Success, string Result);
 record HeartbeatReply(bool Ok, string? Watch);
-record WatchReply(string? Watch);
+record InputEvent(string T, double X, double Y, string? B, int Vk, string? S, string[]? Mods, int D);
+record WatchReply(string? Watch, InputEvent[]? Input);
 static class ScreenState { public static int Streaming; }
 static class Native
 {
     [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
     [DllImport("user32.dll")] public static extern int GetSystemMetrics(int index);
+    [DllImport("user32.dll", SetLastError = true)] static extern uint SendInput(uint count, INPUT[] inputs, int size);
+    [StructLayout(LayoutKind.Sequential)] public struct MOUSEINPUT { public int dx, dy; public uint mouseData, dwFlags, time; public IntPtr dwExtraInfo; }
+    [StructLayout(LayoutKind.Sequential)] public struct KEYBDINPUT { public ushort wVk, wScan; public uint dwFlags, time; public IntPtr dwExtraInfo; }
+    [StructLayout(LayoutKind.Explicit)] public struct INPUTUNION { [FieldOffset(0)] public MOUSEINPUT mi; [FieldOffset(0)] public KEYBDINPUT ki; }
+    [StructLayout(LayoutKind.Sequential)] public struct INPUT { public uint type; public INPUTUNION u; }
+    public static INPUT M(uint flags, int dx = 0, int dy = 0, uint data = 0) => new() { type = 0, u = new INPUTUNION { mi = new MOUSEINPUT { dx = dx, dy = dy, mouseData = data, dwFlags = flags } } };
+    public static INPUT K(ushort vk, ushort scan, uint flags) => new() { type = 1, u = new INPUTUNION { ki = new KEYBDINPUT { wVk = vk, wScan = scan, dwFlags = flags } } };
+    public static void Send(params INPUT[] inputs) => SendInput((uint)inputs.Length, inputs, Marshal.SizeOf<INPUT>());
 }
